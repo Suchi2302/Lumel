@@ -11,9 +11,16 @@ async function loadCSVData() {
   const orders = [];
 
   return new Promise((resolve, reject) => {
+    try{
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (row) => {
+        try{
+        if (
+            !row['Order ID'] || !row['Customer ID'] || !row['Product ID'] ||
+            !row['Date of Sale'] || !row['Quantity Sold'] || !row['Unit Price']
+          ) throw new Error('Missing required fields');
+          
         products.set(row['Product ID'], {
           product_id: row['Product ID'],
           product_name: row['Product Name'],
@@ -39,6 +46,9 @@ async function loadCSVData() {
           row['Shipping Cost'],
           row['Payment Method']
         ]);
+    }catch (err) {
+        fs.appendFileSync('refresh.log', `${err.message}`);
+      }
       })
       .on('end', async () => {
         const conn = await pool.getConnection();
@@ -75,7 +85,12 @@ async function loadCSVData() {
           conn.release();
         }
       });
-  });
+    }
+    catch (error) {
+    fs.appendFileSync('refresh.log', `${error.message}`);
+     // res.status(500).json({ error: error.message });
+    }
+  })
 }
 
 module.exports = { loadCSVData };
